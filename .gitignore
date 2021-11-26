@@ -493,18 +493,5 @@ chisel3_generated/
 
 # === EDA related ===
 
-workspace/SNPS_DC/alib-52/*
-workspace/SNPS_DC/DLIB/*
-workspace/SNPS_DC/DB/*
-workspace/SNPS_DC/DC_WORK/*
-workspace/SNPS_DC/default.svf
-workspace/SNPS_DC/RPT/*
-workspace/SNPS_DC/SCRIPTS/alib-52/*
-workspace/SNPS_DC/SCRIPTS/DLIB/*
-workspace/SNPS_DC/SCRIPTS/DB/*
-workspace/SNPS_DC/SCRIPTS/DC_WORK/*
-workspace/SNPS_DC/SCRIPTS/default.svf
-workspace/SNPS_DC/SCRIPTS/RPT/*
-workspace/SNPS_DC/.dw*
-workspace/SNPS_DC/*.svg
+eda/output
 clog*
