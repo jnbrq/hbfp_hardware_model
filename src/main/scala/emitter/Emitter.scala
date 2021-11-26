@@ -48,8 +48,9 @@ object Emitter extends EmitterBase {
 
   def emit_fp_ops(): Unit = {
     def emit_one(gen_fp: FloatingPoint): Unit = {
-      emit_verilog(s"op_${gen_fp}_add", new float.Add(gen_fp, false))
+      emit_verilog(s"op_${gen_fp}_add", new float.Add(gen_fp, true))
       emit_verilog(s"op_${gen_fp}_mult", new float.Multiply(gen_fp))
+      emit_verilog(s"op_${gen_fp}_act", new float.RELU(gen_fp))
     }
 
     emit_one(FloatingPoint.ieee_fp16)
@@ -93,12 +94,13 @@ object Emitter extends EmitterBase {
     val block_sizes = Array(2, 4, 6, 32)
     val mantissa_widths = Array(2, 3, 4, 5, 6, 7, 8)
 
-    block_sizes.zip(mantissa_widths).foreach {
-      case (block_size, mantissa_width) =>
+    block_sizes.foreach { block_size =>
+      mantissa_widths.foreach { mantissa_width =>
         emit_one(
           FloatingPoint.bfloat16,
           BlockFloatingPoint(block_size, exponent_width, mantissa_width)
         )
+      }
     }
   }
 
