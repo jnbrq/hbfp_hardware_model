@@ -32,6 +32,7 @@ function run_dc() {
     if [[ ! -d "HDL" ]]
     then
         ln -s "$HDL_DIR" "HDL"
+        ln -s "../../edadk.conf"
     fi
 
     # execute the synthesizer
