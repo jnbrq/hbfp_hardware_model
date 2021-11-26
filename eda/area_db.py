@@ -53,7 +53,7 @@ class AreaDatabase:
                 if r is not None:
                     self.add(m, r)
                     return r
-            return None
+            raise KeyError(f"We cannot find an area estimation for {m}")
         else:
             return r
     

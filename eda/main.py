@@ -21,16 +21,10 @@ def assign_handlers():
     area.add_on_miss(DotProductAreaHandler(area))
 
     fp2bfp_area_handler = FloatingPointToBlockFloatingPointAreaHandler(area)
-    fp2bfp_area_handler.add_estimator(
-        FloatingPoint.bfloat16, FixedPointWithExponent(10, 4), [2, 4, 6, 32])
-    fp2bfp_area_handler.add_estimator(
-        FloatingPoint.bfloat16, FixedPointWithExponent(10, 5), [2, 4, 6, 32])
-    fp2bfp_area_handler.add_estimator(
-        FloatingPoint.bfloat16, FixedPointWithExponent(10, 6), [2, 4, 6, 32])
-    fp2bfp_area_handler.add_estimator(
-        FloatingPoint.bfloat16, FixedPointWithExponent(10, 7), [2, 4, 6, 32])
-    fp2bfp_area_handler.add_estimator(
-        FloatingPoint.bfloat16, FixedPointWithExponent(10, 8), [2, 4, 6, 32])
+    for mantissa_width in [2, 3, 4, 5, 6, 7, 8]:
+        fp2bfp_area_handler.add_estimator(
+            FloatingPoint.bfloat16, FixedPointWithExponent(10, mantissa_width),
+            [2, 4, 6, 32])
 
     area.add_on_miss(fp2bfp_area_handler)
 
@@ -124,7 +118,7 @@ def main():
         print(area(Multiply(SInt(8))))
 
     def compare_against_fp(gen_fp: FloatingPoint, fp_name):
-        block_sizes = np.linspace(0, 50, 1000)
+        block_sizes = np.arange(1, 50)
         fp_cost = cost_fpvec(gen_fp)(block_sizes)
 
         plt.figure()
@@ -133,7 +127,7 @@ def main():
         plt.xlabel("Block Size")
         plt.ylabel("Area Ratio")
 
-        for n in [8, 7, 6, 5, 4]:
+        for n in [8, 7, 6, 5, 4, 3, 2]:
             hbfp_cost = cost_hbfp(FixedPointWithExponent(
                 10, n), FloatingPoint.bfloat16)(block_sizes)
             plt.plot(block_sizes, fp_cost / hbfp_cost,
@@ -149,7 +143,7 @@ def main():
     compare_against_fp(FloatingPoint.bfloat16, "bfloat16")
 
     def hbfp_cost():
-        block_sizes = np.linspace(0, 50, 1000)
+        block_sizes = np.arange(1, 50)
 
         plt.figure()
 
@@ -157,7 +151,7 @@ def main():
         plt.xlabel("Block Size")
         plt.ylabel("Area Cost [$\mu m^2$]")
 
-        for n in [8, 7, 6, 5, 4]:
+        for n in [8, 7, 6, 5, 4, 3, 2]:
             hbfp_cost = cost_hbfp(FixedPointWithExponent(
                 10, n), FloatingPoint.bfloat16)(block_sizes)
             plt.plot(block_sizes, hbfp_cost, label=f"HBFP{n}")
@@ -194,7 +188,10 @@ def main():
                      costs[field.name], label=field.name, marker="o", linestyle="--")
 
         plt.legend()
-        plt.xlabel("Mantissa Width")
+
+        plt.title(f"HBFP$n$ Area Cost Breakdown\n(block size = {block_size})")
+
+        plt.xlabel("Mantissa Width ($n$)")
         plt.ylabel("Area Cost [$\mu m^2$]")
 
         plt.savefig("hbfp_cost_breakdown.png")
