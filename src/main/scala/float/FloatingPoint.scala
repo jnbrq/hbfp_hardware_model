@@ -24,7 +24,7 @@ case class FloatingPoint(val exponent_width: Int, val mantissa_width: Int)
   /** @return
     *   A string representation of the bundle.
     */
-  override def toString(): String = s"fpe${exponent}m${mantissa}"
+  override def toString(): String = s"fpe${exponent_width}m${mantissa_width}"
 }
 
 object FloatingPoint {

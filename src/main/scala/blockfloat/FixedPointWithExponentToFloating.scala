@@ -21,8 +21,9 @@ class FixedPointWithExponentToFloatingPoint(
     val out = Output(gen_fp)
   })
 
-  require(gen_fp.mantissa_width + 1 >= gen_fxe.mantissa_width)
-  require(gen_fp.exponent_width >= gen_fxe.exponent_width)
+  // TODO figure out if commenting these ones would cause any problems
+  // require(gen_fp.mantissa_width + 1 >= gen_fxe.mantissa_width)
+  // require(gen_fp.exponent_width >= gen_fxe.exponent_width)
 
   val zero = 0.0.to_floating_point_hw(gen_fp)
 

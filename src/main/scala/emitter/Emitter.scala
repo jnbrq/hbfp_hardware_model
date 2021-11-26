@@ -16,7 +16,7 @@ class EmitterBase extends App {
   }
 
   def emit_verilog(name: String, module_gen: => Module): Unit = {
-    print(s"Generating ${name}")
+    println(s"Generating ${name}")
     val target_dir = s"chisel3_generated/${name}"
     create_directory(target_dir)
     chisel_stage.emitVerilog(
@@ -30,7 +30,7 @@ class EmitterBase extends App {
   }
 }
 
-class Emitter extends EmitterBase {
+object Emitter extends EmitterBase {
   def emit_fx_ops(): Unit = {
     for (i <- (1 to 16)) {
       emit_verilog(s"op_u${i}_add", new generic.Add(UInt(i.W)))
@@ -71,6 +71,8 @@ class Emitter extends EmitterBase {
     }
 
     for (i <- (1 to 8)) {
+      // It does not make any sense to choose an exponent width larger than
+      // the floating point format's exponent width.
       emit_one(FixedPointWithExponent(10, 2 * i), FloatingPoint.bfloat16)
     }
   }

@@ -16,7 +16,7 @@ case class FixedPointWithExponent(
   val exponent = SInt(exponent_width.W)
   val mantissa = SInt(mantissa_width.W)
 
-  override def toString(): String = s"fxe${exponent}m${mantissa_width}"
+  override def toString(): String = s"fxe${exponent_width}m${mantissa_width}"
 }
 
 /** Block floating point.
