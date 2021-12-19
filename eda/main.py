@@ -199,6 +199,35 @@ def main():
 
     hbfp_cost_breakdown()
 
+def cs471_plots():
+    def do_plot(gen_fp: FloatingPoint, fp_name):
+        xtick_sqrts = [ 1, 4, 8, 16, 24, 32 ]
+        block_sizes = np.arange(1, xtick_sqrts[-1] ** 2 * 1.05 )
+        fp_cost = cost_fpvec(gen_fp)(block_sizes)
+
+        fig, ax = plt.subplots(1, 1)
+
+        ax.set_title(f"{fp_name} vs. HBFP$n$ Area Comparison")
+        ax.set_xlabel("Block Size")
+        ax.set_ylabel("Area Ratio")
+
+        for n in [8, 6, 4]:
+            hbfp_cost = cost_hbfp(FixedPointWithExponent(
+                10, n), FloatingPoint.bfloat16)(block_sizes)
+            ax.plot(block_sizes ** (1 / 2), fp_cost / hbfp_cost,
+                     label=f"{fp_name}/HBFP{n}")
+        
+        ax.set_xticks(xtick_sqrts)
+        ax.set_xticklabels([ f"${a}\\times{a}$" for a in xtick_sqrts ])
+        
+        ax.grid()
+        ax.legend()
+
+        plt.savefig(f"cs471_{fp_name}_hbfp_comparison.png".lower())
+        plt.savefig(f"cs471_{fp_name}_hbfp_comparison.pdf".lower())
+
+    do_plot(FloatingPoint.ieee_fp32, "FP32")
 
 if __name__ == "__main__":
     main()
+    cs471_plots()
