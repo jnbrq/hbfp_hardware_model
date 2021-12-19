@@ -200,12 +200,15 @@ def main():
     hbfp_cost_breakdown()
 
 def cs471_plots():
-    def do_plot(gen_fp: FloatingPoint, fp_name):
-        xtick_sqrts = [ 1, 4, 8, 16, 24, 32 ]
-        block_sizes = np.arange(1, xtick_sqrts[-1] ** 2 * 1.05 )
+    xtick_sqrts = [ 1, 4, 8, 16, 24, 32 ]
+    block_sizes = np.arange(1, xtick_sqrts[-1] ** 2 * 1.05 )
+
+    def do_plot_1(gen_fp: FloatingPoint = FloatingPoint.ieee_fp32, fp_name = "FP32"):
+        # hardware cost comparison
+
         fp_cost = cost_fpvec(gen_fp)(block_sizes)
 
-        fig, ax = plt.subplots(1, 1)
+        fig, ax = plt.subplots(1, 1, figsize = (6, 4))
 
         ax.set_title(f"{fp_name} vs. HBFP$n$ Area Comparison")
         ax.set_xlabel("Block Size")
@@ -215,18 +218,76 @@ def cs471_plots():
             hbfp_cost = cost_hbfp(FixedPointWithExponent(
                 10, n), FloatingPoint.bfloat16)(block_sizes)
             ax.plot(block_sizes ** (1 / 2), fp_cost / hbfp_cost,
-                     label=f"{fp_name}/HBFP{n}")
+                    label=f"{fp_name}/HBFP{n}")
         
         ax.set_xticks(xtick_sqrts)
         ax.set_xticklabels([ f"${a}\\times{a}$" for a in xtick_sqrts ])
         
         ax.grid()
-        ax.legend()
+        ax.legend(loc="lower right")
 
-        plt.savefig(f"cs471_{fp_name}_hbfp_comparison.png".lower())
-        plt.savefig(f"cs471_{fp_name}_hbfp_comparison.pdf".lower())
+        plt.tight_layout()
 
-    do_plot(FloatingPoint.ieee_fp32, "FP32")
+        plt.savefig(f"cs471_hwcost.png".lower())
+        plt.savefig(f"cs471_hwcost.pdf".lower())
+    
+    def do_plot_2():
+        # storage requirements comparison
+
+        def storage_fp_(gen_fp: FloatingPoint):
+            @np.vectorize
+            def f(block_size):
+                return block_size * (gen_fp.exponent_width + gen_fp.mantissa_width)
+            return f
+
+        def storage_hbfp_(gen_fxe: FixedPointWithExponent):
+            @np.vectorize
+            def f(block_size):
+                return block_size * gen_fxe.mantissa_width + gen_fxe.exponent_width
+            return f
+        
+        def storage_int_(int_bit_width: int):
+            @np.vectorize
+            def f(block_size):
+                return block_size * int_bit_width
+            return f
+        
+        draw_list = [
+            ("FP32", storage_fp_(FloatingPoint.ieee_fp32)),
+            ("HBFP8", storage_hbfp_(FixedPointWithExponent(10, 8))),
+            ("HBFP6", storage_hbfp_(FixedPointWithExponent(10, 6))),
+            ("HBFP4", storage_hbfp_(FixedPointWithExponent(10, 4))),
+            ("INT8", storage_int_(8)),
+            ("INT6", storage_int_(6)),
+            ("INT4", storage_int_(4))
+        ]
+
+        fig, ax = plt.subplots(1, 1, figsize = (6, 4))
+
+        ax.set_yscale("log")
+
+        ax.set_title(f"FP32 vs. HBFP$n$ vs. INT$n$ Area Comparison")
+        ax.set_xlabel("Block Size")
+        ax.set_ylabel("Storage Requirement [bits]")
+
+        for x in draw_list:
+            lbl, f = x
+            ax.plot(block_sizes ** (1 / 2), f(block_sizes), label=lbl)
+        
+        ax.set_xticks(xtick_sqrts)
+        ax.set_xticklabels([ f"${a}\\times{a}$" for a in xtick_sqrts ])
+        
+        ax.grid()
+        ax.legend(loc="lower right")
+
+        plt.tight_layout()
+
+        plt.savefig(f"cs471_storage.png".lower())
+        plt.savefig(f"cs471_storage.pdf".lower())
+
+
+    do_plot_1()
+    do_plot_2()
 
 if __name__ == "__main__":
     main()
