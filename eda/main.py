@@ -45,6 +45,18 @@ class HbfpAreaCost:
 
 
 @dataclass(frozen=True)
+class IntAreaCost:
+    dot_product: float
+    fx_to_fp: float
+    accumulator: float
+    activation: float
+    fp_to_fx: float
+
+    def total(self) -> float:
+        return self.dot_product + self.fx_to_fp + self.accumulator + self.activation + self.fp_to_fx
+
+
+@dataclass(frozen=True)
 class FloatingPointVecAreaCost:
     dot_product: float
     accumulator: float
@@ -88,6 +100,25 @@ def cost_fpvec(gen_fp: FloatingPoint, breakdown: bool = False) -> Callable[[int]
         return cost
     return np.vectorize(lambda x: cost(x).total())
 
+
+def cost_int(
+        width: int,
+        gen_fp: FloatingPoint,
+        breakdown: bool = False) -> Callable[[int], float]:
+    def cost(block_size: int) -> HbfpAreaCost:
+        gen_int1 = SInt(width)
+        gen_int2 = SInt(width * 2)
+        dot_product = area(Multiply(gen_int1)) * block_size + area(Add(gen_int2)) * (block_size - 1)
+        accumulator = area(Accumulator(gen_fp))
+        activation = area(RELU(gen_fp))
+        # TODO properly consider fx to fp. Unfortunately, we do not have that module. Create an estimator.
+        # TODO Same goes for fp to fx.
+        fx_to_fp = 0
+        fp_to_fx = 0
+        return HbfpAreaCost(dot_product, fx_to_fp, accumulator, activation, fp_to_fx)
+    if breakdown:
+        return cost
+    return np.vectorize(lambda x: cost(x).total())
 
 def main():
     if False:
@@ -200,25 +231,31 @@ def main():
     hbfp_cost_breakdown()
 
 def cs471_plots():
-    xtick_sqrts = [ 1, 4, 8, 16, 24, 32 ]
-    block_sizes = np.arange(1, xtick_sqrts[-1] ** 2 * 1.05 )
+    # plt.style.use('seaborn-colorblind')
+    plt.rcParams.update({"axes.prop_cycle": "cycler('color', ['0e679f', 'd15c11', '258b2d', '2f2f3b', '7f52af'])"})
 
     def do_plot_1(gen_fp: FloatingPoint = FloatingPoint.ieee_fp32, fp_name = "FP32"):
+        xtick_sqrts = [ 1, 4, 8, 16, 24, 32 ]
+        block_sizes = np.arange(1, xtick_sqrts[-1] ** 2 * 1.05 )
         # hardware cost comparison
 
         fp_cost = cost_fpvec(gen_fp)(block_sizes)
 
         fig, ax = plt.subplots(1, 1, figsize = (6, 4))
 
-        ax.set_title(f"{fp_name} vs. HBFP$n$ Area Comparison")
+        # ax.set_title(f"{fp_name} vs. HBFP$n$ Area Comparison")
         ax.set_xlabel("Block Size")
-        ax.set_ylabel("Area Ratio")
+        ax.set_ylabel("Hardware Cost (Area) Ratio")
 
         for n in [8, 6, 4]:
             hbfp_cost = cost_hbfp(FixedPointWithExponent(
                 10, n), FloatingPoint.bfloat16)(block_sizes)
             ax.plot(block_sizes ** (1 / 2), fp_cost / hbfp_cost,
-                    label=f"{fp_name}/HBFP{n}")
+                    label=f"{fp_name}/HBFP${n}$")
+        
+        int_cost = cost_int(8, FloatingPoint.bfloat16)(block_sizes)
+        ax.plot(block_sizes ** (1 / 2), fp_cost / int_cost,
+                label=f"{fp_name}/INT$8$")
         
         ax.set_xticks(xtick_sqrts)
         ax.set_xticklabels([ f"${a}\\times{a}$" for a in xtick_sqrts ])
@@ -232,6 +269,8 @@ def cs471_plots():
         plt.savefig(f"cs471_hwcost.pdf".lower())
     
     def do_plot_2():
+        xtick_sqrts = [ 1, 4, 8 ]
+        block_sizes = np.arange(1, xtick_sqrts[-1] ** 2 * 1.05 )
         # storage requirements comparison
 
         def storage_fp_(gen_fp: FloatingPoint):
@@ -257,16 +296,14 @@ def cs471_plots():
             ("HBFP8", storage_hbfp_(FixedPointWithExponent(10, 8))),
             ("HBFP6", storage_hbfp_(FixedPointWithExponent(10, 6))),
             ("HBFP4", storage_hbfp_(FixedPointWithExponent(10, 4))),
-            ("INT8", storage_int_(8)),
-            ("INT6", storage_int_(6)),
-            ("INT4", storage_int_(4))
+            ("INT8", storage_int_(8))
         ]
 
         fig, ax = plt.subplots(1, 1, figsize = (6, 4))
 
-        ax.set_yscale("log")
+        # ax.set_yscale("log")
 
-        ax.set_title(f"FP32 vs. HBFP$n$ vs. INT$n$ Area Comparison")
+        # ax.set_title(f"FP32 vs. HBFP$n$ vs. INT$n$ Area Comparison")
         ax.set_xlabel("Block Size")
         ax.set_ylabel("Storage Requirement [bits]")
 
@@ -290,5 +327,5 @@ def cs471_plots():
     do_plot_2()
 
 if __name__ == "__main__":
-    main()
+    # main()
     cs471_plots()
