@@ -253,9 +253,13 @@ def cs471_plots():
             ax.plot(block_sizes ** (1 / 2), fp_cost / hbfp_cost,
                     label=f"{fp_name}/HBFP${n}$")
         
-        int_cost = cost_int(8, FloatingPoint.bfloat16)(block_sizes)
-        ax.plot(block_sizes ** (1 / 2), fp_cost / int_cost,
+        int8_cost = cost_int(8, FloatingPoint.bfloat16)(block_sizes)
+        ax.plot(block_sizes ** (1 / 2), fp_cost / int8_cost,
                 label=f"{fp_name}/INT$8$")
+        
+        int6_cost = cost_int(6, FloatingPoint.bfloat16)(block_sizes)
+        ax.plot(block_sizes ** (1 / 2), fp_cost / int6_cost,
+                label=f"{fp_name}/INT$6$")
         
         ax.set_xticks(xtick_sqrts)
         ax.set_xticklabels([ f"${a}\\times{a}$" for a in xtick_sqrts ])
