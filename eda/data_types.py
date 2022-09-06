@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import re
+from turtle import width
 from typing import Type
 from common import from_string
 
@@ -43,6 +44,9 @@ class FixedPointWithExponent(Data):
 
     def __repr__(self) -> str:
         return f"fxe{self.exponent_width}m{self.mantissa_width}"
+    
+    def bits(self) -> int:
+        return self.exponent_width + self.mantissa_width
 
 
 @register_dataype
@@ -58,6 +62,9 @@ class BlockFloatingPoint(Data):
 
     def as_fixed_point_with_exponent(self) -> FixedPointWithExponent:
         return FixedPointWithExponent(self.exponent_width, self.mantissa_width)
+    
+    def bits(self) -> int:
+        return self.block_size * self.mantissa_width + self.exponent_width
 
 
 @register_dataype
@@ -69,6 +76,9 @@ class FloatingPoint(Data):
 
     def __repr__(self) -> str:
         return f"fpe{self.exponent_width}m{self.mantissa_width}"
+    
+    def bits(self) -> int:
+        return self.exponent_width + self.mantissa_width
 
 
 FloatingPoint.ieee_fp16 = FloatingPoint(5, 10)
@@ -91,6 +101,9 @@ class FloatingPointVec(Data):
 
     def as_floating_point(self) -> FloatingPoint:
         return FloatingPoint(self.exponent_width, self.mantissa_width)
+    
+    def bits(self) -> int:
+        return (self.exponent_width + self.mantissa_width) * self.block_size
 
 @register_dataype
 @from_string(_regex_uint)
@@ -100,6 +113,9 @@ class UInt(Data):
 
     def __repr__(self) -> str:
         return f"u{self.width}"
+    
+    def bits(self) -> int:
+        return width
 
 
 @register_dataype
@@ -110,3 +126,6 @@ class SInt(Data):
 
     def __repr__(self) -> str:
         return f"s{self.width}"
+    
+    def bits(self) -> int:
+        return width
