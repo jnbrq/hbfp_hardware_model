@@ -51,7 +51,8 @@ class StardustConfigHBFP:
         area_exp = area(Add(SInt(s.len_exponent)))
         area_float_add = area(Add(s.floating_point))
         return s.dim_array ** 2 * (area_sint_add + area_sint_multiply) + \
-            (s.dim_array ** 2 / s.dim_block) * (area_exp + area_float_add)
+            (s.dim_array ** 2 / s.dim_block) * (area_float_add) + \
+                (s.dim_array / s.dim_block) ** 2 * (area_exp)
 
     def area_simd_unit(s) -> float:
         return AREA_SRAM * (s.dim_array ** 2) * s.floating_point.bits()
@@ -153,20 +154,21 @@ def main() -> None:
     import numpy as np
     import matplotlib.pyplot as plt
 
-    x = StardustConfigFloatingPoint(dim_array=641, floating_point=FloatingPoint.ieee_fp32)
-    x.maximize_onchip_area(700e6)
-    print(x.reuse)
+    # x = StardustConfigFloatingPoint(dim_array=641, floating_point=FloatingPoint.ieee_fp32)
+    # x.maximize_onchip_area(700e6)
+    # print(x.reuse)
     # return
 
     area_envelope = 700e6
-    n = np.arange(1, 675) # 1450) # 3400)
+    n = np.arange(1, 3400) # 675) # 1450) # 3400)
 
     plt.figure()
 
     def part1() -> None:
         @np.vectorize
         def calculate(n) -> Tuple[float, float]:
-            cfg = StardustConfigFloatingPoint(dim_array=n, floating_point=FloatingPoint.ieee_fp32)
+            cfg = StardustConfigHBFP(dim_array=n)
+            # cfg = StardustConfigFloatingPoint(dim_array=n, floating_point=FloatingPoint.ieee_fp32)
             cfg.reuse = (1, 1)
             if cfg.area() > area_envelope:
                 return (cfg.dim_array, 0)
@@ -181,7 +183,8 @@ def main() -> None:
     def part2() -> None:
         @np.vectorize
         def calculate(n) -> Tuple[float, float]:
-            cfg = StardustConfigFloatingPoint(dim_array=n, floating_point=FloatingPoint.ieee_fp32)
+            cfg = StardustConfigHBFP(dim_array=n)
+            # cfg = StardustConfigFloatingPoint(dim_array=n, floating_point=FloatingPoint.ieee_fp32)
             if not cfg.maximize_onchip_area(area_envelope):
                 return (cfg.dim_array, 0)
                 return (cfg.throughput(), 0)
