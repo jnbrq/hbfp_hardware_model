@@ -320,6 +320,16 @@ def main() -> None:
             len_exponent=10,
             len_mantissa=4,
             floating_point=FloatingPoint.bfloat16))
+    
+    plot_for(
+        "hbfp8",
+        lambda n: StardustConfigHBFP(
+            clock_frequency=clock_frequency,
+            dim_array=n,
+            dim_block=16,
+            len_exponent=10,
+            len_mantissa=8,
+            floating_point=FloatingPoint.bfloat16))
 
     plot_for(
         "bfloat16",
