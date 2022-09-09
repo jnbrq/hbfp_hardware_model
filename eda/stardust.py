@@ -128,6 +128,7 @@ class StardustConfigHBFP(StardustConfig):
         )
 
         reuse = math.floor(reuse)
+        # reuse = max(reuse, 1)
 
         if reuse <= 0:
             return False
@@ -183,6 +184,7 @@ class StardustConfigFloatingPoint(StardustConfig):
         )
 
         reuse = math.floor(reuse)
+        # reuse = max(reuse, 1)
 
         if reuse <= 0:
             return False
@@ -231,33 +233,30 @@ def main() -> None:
                      label="HBM2 Bandwidth", linestyle="--", color="#663300")
 
     def print_statistics(cfg: StardustConfig, area_envelope: float):
+        # autopep8: off
         print(f"Clock Freq      [  MHz] = { cfg.clock_frequency }")
         print(f"Area Envelope   [  mm²] = { area_envelope / 1e6 }")
         print(f"Area            [  mm²] = { cfg.area() / 1e6 }")
         print(f"  Exec          [  mm²] = { cfg.area_exec_unit() / 1e6 }")
-        print(
-            f"  Exec          [    %] = { cfg.area_exec_unit() / cfg.area() * 100 }")
+        print(f"  Exec          [    %] = { cfg.area_exec_unit() / cfg.area() * 100 }")
         print(f"  SIMD          [  mm²] = { cfg.area_simd_unit() / 1e6 }")
-        print(
-            f"  SIMD          [    %] = { cfg.area_simd_unit() / cfg.area() * 100 }")
+        print(f"  SIMD          [    %] = { cfg.area_simd_unit() / cfg.area() * 100 }")
         print(f"  On-Chip Mem   [  mm²] = { cfg.area_mem_onchip() / 1e6 }")
-        print(
-            f"  On-Chip Mem   [    %] = { cfg.area_mem_onchip() / cfg.area() * 100 }")
-        print(
-            f"Area / Envelope [    %] = { cfg.area() / area_envelope * 100 }")
+        print(f"  On-Chip Mem   [    %] = { cfg.area_mem_onchip() / cfg.area() * 100 }")
+        print(f"Area / Envelope [    %] = { cfg.area() / area_envelope * 100 }")
         print(f"Array Dim       [     ] = { cfg.dim_array }")
         print(f"Off-chip BW     [ GB/s] = { cfg.bandwidth_offchip() }")
         print(f"Throughput      [TOp/s] = { cfg.throughput() }")
-        print(
-            f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area() * 1e15 }")
+        print(f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area() * 1e15 }")
         print(f"Reuse           [     ] = { cfg.reuse }")
+        # autopep8: on
 
     def plot_for(
         title: str,
         area_envelope: float,
         gen: Callable[[int], StardustConfig]
     ) -> None:
-        fig = plt.figure(figsize=(4, 4), dpi=300)
+        fig = plt.figure(figsize=(4, 4))  # , dpi=300)
         subplot = fig.add_subplot()
         subplot.set_title(title)
         subplot.set_ylabel("Off-chip Memory Bandwidth [GB/s]")
