@@ -247,7 +247,7 @@ def main() -> None:
         print(f"Array Dim       [     ] = { cfg.dim_array }")
         print(f"Off-chip BW     [ GB/s] = { cfg.bandwidth_offchip() }")
         print(f"Throughput      [TOp/s] = { cfg.throughput() }")
-        print(f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area() * 1e15 }")
+        print(f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area_exec_unit() * 1e15 }")
         print(f"Reuse           [     ] = { cfg.reuse }")
         # autopep8: on
 
