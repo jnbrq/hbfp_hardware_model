@@ -1,4 +1,5 @@
 import math
+from turtle import color
 from typing import Callable, Tuple
 from area_db import AreaDatabase
 from modules import Add, Multiply
@@ -13,6 +14,8 @@ area = AreaDatabase(DATA_DIR)
 
 # AREA_SRAM = 0.244803  # from Ahmet's paper, um^2/bit
 AREA_SRAM = 1.041666  # from Mario's analysis
+
+SAVE_FIGS = False
 
 
 def quadratic_solve(a: float, b: float, c: float) -> Tuple[float, float]:
@@ -197,69 +200,64 @@ def main() -> None:
     import matplotlib.axes
     import matplotlib.pyplot as plt
 
-    if False:
-        x = StardustConfigFloatingPoint(
-            dim_array=404, floating_point=FloatingPoint.ieee_fp32)
-        x.maximize_onchip_area(700e6 * 0.40)
-        print(x.throughput())
-        print(x.area())
-        print(x.memsz_onchip() / 8e6)
-        print(x.bandwidth_offchip())
-
-    if False:
-        x = StardustConfigFloatingPoint(
-            dim_array=256, floating_point=FloatingPoint.ieee_fp32)
-        x.maximize_onchip_area(700e6 * 0.40 * (28 / 16) ** 2)
-        print(x.throughput())
-        print(x.area())
-        print(x.area_exec_unit() / x.area() * 100)
-        print(x.memsz_onchip() / 8e6)
-        print(x.bandwidth_offchip())
-        return
-
-    clock_frequency = 800e6
-    # total of on-chip memory and arithmetic
-    area_envelope = 700e6 * 0.40 * (28 / 16) ** 2
+    reticle_size = 830e6
     critical_bw = 1000
 
-    print(f"Area Envelope [mm²] = {area_envelope / 1e6}")
+    def find_good_fraction(cfg: StardustConfig):
+        """
+        From a given Stardust configuration, tries to find a good area percentage
+        between 40% and 45% to maximize the HBM bandwidth.
+        """
+
+        @np.vectorize
+        def f(fraction: int) -> float:
+            cfg.maximize_onchip_area(reticle_size * fraction)
+            return (cfg.bandwidth_offchip())
+
+        x = np.arange(40.0, 46.0, 1.0)
+        y = f(x)
+        return math.floor(x[np.argwhere(y < critical_bw)[-1]])
+
+    clock_frequency = 800e6
+
     print(f"Clock Frequency [MHz] = {clock_frequency / 1e6}")
 
-    xlim = [0, 6100]
-    ylim = [0, 4500]
+    xlim = [0, 5020]
+    ylim = [0, 4020]
     n = np.arange(1, 3300)
 
     def plot_max_bw(subplot: matplotlib.axes.Axes, x: np.ndarray) -> None:
         subplot.plot(x, x * 0.0 + critical_bw,
-                     label="HBM2 Bandwidth", linestyle="--")
+                     label="HBM2 Bandwidth", linestyle="--", color="#663300")
 
-    def print_statistics(gen: Callable[[int], StardustConfig], n: int, maximize: bool):
-        cfg = gen(n)
-        if maximize:
-            cfg.maximize_onchip_area(area_envelope)
-        else:
-            cfg.reuse = (1, 1)
+    def print_statistics(cfg: StardustConfig, area_envelope: float):
         print(f"Clock Freq      [  MHz] = { cfg.clock_frequency }")
         print(f"Area Envelope   [  mm²] = { area_envelope / 1e6 }")
         print(f"Area            [  mm²] = { cfg.area() / 1e6 }")
         print(f"  Exec          [  mm²] = { cfg.area_exec_unit() / 1e6 }")
-        print(f"  Exec          [    %] = { cfg.area_exec_unit() / cfg.area() * 100 }")
+        print(
+            f"  Exec          [    %] = { cfg.area_exec_unit() / cfg.area() * 100 }")
         print(f"  SIMD          [  mm²] = { cfg.area_simd_unit() / 1e6 }")
-        print(f"  SIMD          [    %] = { cfg.area_simd_unit() / cfg.area() * 100 }")
+        print(
+            f"  SIMD          [    %] = { cfg.area_simd_unit() / cfg.area() * 100 }")
         print(f"  On-Chip Mem   [  mm²] = { cfg.area_mem_onchip() / 1e6 }")
-        print(f"  On-Chip Mem   [    %] = { cfg.area_mem_onchip() / cfg.area() * 100 }")
-        print(f"Area / Envelope [    %] = { cfg.area() / area_envelope * 100 }")
+        print(
+            f"  On-Chip Mem   [    %] = { cfg.area_mem_onchip() / cfg.area() * 100 }")
+        print(
+            f"Area / Envelope [    %] = { cfg.area() / area_envelope * 100 }")
         print(f"Array Dim       [     ] = { cfg.dim_array }")
         print(f"Off-chip BW     [ GB/s] = { cfg.bandwidth_offchip() }")
         print(f"Throughput      [TOp/s] = { cfg.throughput() }")
-        print(f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area() * 1e15 }")
+        print(
+            f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area() * 1e15 }")
         print(f"Reuse           [     ] = { cfg.reuse }")
 
     def plot_for(
         title: str,
+        area_envelope: float,
         gen: Callable[[int], StardustConfig]
     ) -> None:
-        fig = plt.figure()
+        fig = plt.figure(figsize=(4, 4), dpi=300)
         subplot = fig.add_subplot()
         subplot.set_title(title)
         subplot.set_ylabel("Off-chip Memory Bandwidth [GB/s]")
@@ -267,6 +265,7 @@ def main() -> None:
 
         def without_reuse() -> None:
             lim = [False, 0]
+            cfgs = [None] * n.shape[0]
 
             @np.vectorize
             def calculate(n) -> Tuple[float, float]:
@@ -277,16 +276,20 @@ def main() -> None:
                         lim[0] = True
                         lim[1] = n - 1
                     return (cfg.throughput(), 0)
+                cfgs[n] = cfg
                 return (cfg.throughput(), cfg.bandwidth_offchip())
             x, y = calculate(n)
             plot_max_bw(subplot, x)
-            subplot.plot(x[0:lim[1]], y[0:lim[1]], label="without data reuse")
+            subplot.plot(x[0:lim[1]], y[0:lim[1]],
+                         label="without data reuse", color="#B85450")
             subplot.legend()
             print(">> without reuse: <<")
-            print_statistics(gen, n[np.argwhere(y[0:lim[1]] < critical_bw)[-1]], False)
+            print_statistics(
+                cfgs[n[np.argwhere(y[0:lim[1]] < critical_bw)[-1]][0]], area_envelope)
 
         def with_reuse() -> None:
             lim = [False, 0]
+            cfgs = [None] * n.shape[0]
 
             @np.vectorize
             def calculate(n) -> Tuple[float, float]:
@@ -296,13 +299,15 @@ def main() -> None:
                         lim[0] = True
                         lim[1] = n - 1
                     return (cfg.throughput(), 0)
-                # print(cfg.dim_array, cfg.throughput(), cfg.area() / area_envelope * 100)
+                cfgs[n] = cfg
                 return (cfg.throughput(), cfg.bandwidth_offchip())
             x, y = calculate(n)
-            subplot.plot(x[0:lim[1]], y[0:lim[1]], label="with data reuse")
+            subplot.plot(x[0:lim[1]], y[0:lim[1]],
+                         label="with data reuse", color="#6C8EBF")
             subplot.legend()
             print(">> with data reuse: <<")
-            print_statistics(gen, n[np.argwhere(y[0:lim[1]] < critical_bw)[-1]], True)
+            print_statistics(
+                cfgs[n[np.argwhere(y[0:lim[1]] < critical_bw)[-1]][0]], area_envelope)
 
         print(f"=== DATA FOR {title.upper()} ===")
         without_reuse()
@@ -311,8 +316,16 @@ def main() -> None:
         subplot.set_ylim(ylim)
         subplot.set_xlim(xlim)
 
+        if SAVE_FIGS:
+            fig.tight_layout()
+            fig.savefig(f"{ title }-bw.svg")
+            fig.savefig(f"{ title }-bw.png")
+
+    efficiency = 0.85  # mario's reference
+
     plot_for(
         "hbfp4",
+        reticle_size * efficiency,
         lambda n: StardustConfigHBFP(
             clock_frequency=clock_frequency,
             dim_array=n,
@@ -320,9 +333,10 @@ def main() -> None:
             len_exponent=10,
             len_mantissa=4,
             floating_point=FloatingPoint.bfloat16))
-    
+
     plot_for(
         "hbfp8",
+        reticle_size * efficiency,
         lambda n: StardustConfigHBFP(
             clock_frequency=clock_frequency,
             dim_array=n,
@@ -333,6 +347,7 @@ def main() -> None:
 
     plot_for(
         "bfloat16",
+        reticle_size * efficiency,
         lambda n: StardustConfigFloatingPoint(
             clock_frequency=clock_frequency,
             dim_array=n,
@@ -340,22 +355,14 @@ def main() -> None:
 
     plot_for(
         "fp32",
+        reticle_size * efficiency,
         lambda n: StardustConfigFloatingPoint(
             clock_frequency=clock_frequency,
             dim_array=n,
             floating_point=FloatingPoint.ieee_fp32))
 
-    plt.show()
-
-    if False:
-        x = StardustConfigHBFP(dim_array=2700, reuse=(1, 1))
-        # x.maximize_onchip_area(700e6)
-        print(x.reuse)
-        print(x.area())
-        x.maximize_onchip_area(700e6)
-        print(x.reuse)
-        print(x.area())
-        return
+    if not SAVE_FIGS:
+        plt.show()
 
 
 if __name__ == "__main__":
