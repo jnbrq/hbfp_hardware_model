@@ -1,5 +1,4 @@
 import math
-from turtle import color
 from typing import Callable, Tuple
 from area_db import AreaDatabase
 from modules import Add, Multiply
@@ -7,10 +6,12 @@ from data_types import FloatingPoint, SInt
 import dataclasses
 import os
 from abc import ABC, abstractmethod
-
+from fixed_point_estimators import register_fixed_point_estimators
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/output"
 area = AreaDatabase(DATA_DIR)
+
+register_fixed_point_estimators(area)
 
 # AREA_SRAM = 0.244803  # from Ahmet's paper, um^2/bit
 AREA_SRAM = 1.041666  # from Mario's analysis
@@ -99,8 +100,8 @@ class StardustConfigHBFP(StardustConfig):
         return s.dim_array ** 2 * s.clock_frequency / 1e12
 
     def area_exec_unit(s) -> float:
-        area_sint_add = area(Add(SInt(s.len_mantissa)))
         area_sint_multiply = area(Multiply(SInt(s.len_mantissa)))
+        area_sint_add = area(Add(SInt(2 * s.len_mantissa + math.ceil(math.log2(s.dim_block)) + 1)))
         area_exp = area(Add(SInt(s.len_exponent)))
         area_float_add = area(Add(s.floating_point))
         return s.dim_array ** 2 * (area_sint_add + area_sint_multiply) + \
