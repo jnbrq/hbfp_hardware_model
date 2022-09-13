@@ -81,6 +81,7 @@ def register_fixed_point_estimators(area: AreaDatabase):
 def main() -> None:
     DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/output"
     area = AreaDatabase(DATA_DIR)
+    register_fixed_point_estimators(area)
     
     import matplotlib.pyplot as plt
 
