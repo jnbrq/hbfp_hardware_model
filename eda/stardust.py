@@ -16,7 +16,8 @@ register_fixed_point_estimators(area)
 # AREA_SRAM = 0.244803  # from Ahmet's paper, um^2/bit
 AREA_SRAM = 1.041666  # from Mario's analysis
 
-SAVE_FIGS = False
+SAVE_FIGS = True
+FIGS_PATH = "fig_output2/"
 
 
 def quadratic_solve(a: float, b: float, c: float) -> Tuple[float, float]:
@@ -76,6 +77,12 @@ class StardustConfig(ABC):
         """
         Maximizes the on-chip area and reuse while staying within the area envelope.
         """
+    
+    def performance_density(s, memory_bandwidth: float) -> bool:
+        """
+        Returns the performance density (Throughput/Area) [TOps/mm²] of the hardware configuration.
+        """
+        return s.throughput() * min(1, memory_bandwidth / s.bandwidth_offchip()) / (s.area_exec_unit() / 1e6)
 
 
 @dataclasses.dataclass(frozen=False, unsafe_hash=True)
@@ -225,8 +232,6 @@ def main() -> None:
 
     print(f"Clock Frequency [MHz] = {clock_frequency / 1e6}")
 
-    xlim = [0, 5020]
-    ylim = [0, 4020]
     n = np.arange(1, 3300)
 
     def plot_max_bw(subplot: matplotlib.axes.Axes, x: np.ndarray) -> None:
@@ -250,6 +255,7 @@ def main() -> None:
         print(f"Throughput      [TOp/s] = { cfg.throughput() }")
         print(f"xput/area/sec   [     ] = { cfg.throughput() / cfg.clock_frequency / cfg.area_exec_unit() * 1e15 }")
         print(f"Reuse           [     ] = { cfg.reuse }")
+        print(f"Perf. density   [     ] = { cfg.performance_density(critical_bw) }")
         # autopep8: on
 
     def plot_for(
@@ -257,11 +263,17 @@ def main() -> None:
         area_envelope: float,
         gen: Callable[[int], StardustConfig]
     ) -> None:
-        fig = plt.figure(figsize=(4, 4))  # , dpi=300)
-        subplot = fig.add_subplot()
-        subplot.set_title(title)
-        subplot.set_ylabel("Off-chip Memory Bandwidth [GB/s]")
-        subplot.set_xlabel("Arithmetic Throughput [TOps/s]")
+        fig = plt.figure(figsize=(4, 8))  # , dpi=300)
+
+        bw_vs_xput = fig.add_subplot(2, 1, 1)
+        bw_vs_xput.set_title(f"Memory BW vs. Throughput\nfor {title}")
+        bw_vs_xput.set_ylabel("Off-chip Memory Bandwidth [GB/s]")
+        bw_vs_xput.set_xlabel("Arithmetic Throughput [TOps/s]")
+
+        pd_vs_xput = fig.add_subplot(2, 1, 2)
+        pd_vs_xput.set_title(f"Perf Density vs. Throughput\nfor {title}")
+        pd_vs_xput.set_ylabel("Performance Density [TOps/mm²]")
+        pd_vs_xput.set_xlabel("Arithmetic Throughput [TOps/s]")
 
         def without_reuse() -> None:
             lim = [False, 0]
@@ -275,17 +287,23 @@ def main() -> None:
                     if not lim[0]:
                         lim[0] = True
                         lim[1] = n - 1
-                    return (cfg.throughput(), 0)
+                    return (cfg.throughput(), 0, 0)
                 cfgs[n] = cfg
-                return (cfg.throughput(), cfg.bandwidth_offchip())
-            x, y = calculate(n)
-            plot_max_bw(subplot, x)
-            subplot.plot(x[0:lim[1]], y[0:lim[1]],
+                return (cfg.throughput(), cfg.bandwidth_offchip(), cfg.performance_density(critical_bw))
+            xput, bw, pd = calculate(n)
+            plot_max_bw(bw_vs_xput, xput)
+
+            bw_vs_xput.plot(xput[0:lim[1]], bw[0:lim[1]],
                          label="without data reuse", color="#B85450")
-            subplot.legend()
+            bw_vs_xput.legend()
+
+            pd_vs_xput.plot(xput[500:lim[1]], pd[500:lim[1]],
+                         label="without data reuse", color="#B85450")
+            pd_vs_xput.legend()
+
             print(">> without reuse: <<")
             print_statistics(
-                cfgs[n[np.argwhere(y[0:lim[1]] < critical_bw)[-1]][0]], area_envelope)
+                cfgs[n[np.argwhere(bw[0:lim[1]] < critical_bw)[-1]][0]], area_envelope)
 
         def with_reuse() -> None:
             lim = [False, 0]
@@ -298,52 +316,51 @@ def main() -> None:
                     if not lim[0]:
                         lim[0] = True
                         lim[1] = n - 1
-                    return (cfg.throughput(), 0)
+                    return (cfg.throughput(), 0, 0)
                 cfgs[n] = cfg
-                return (cfg.throughput(), cfg.bandwidth_offchip())
-            x, y = calculate(n)
-            subplot.plot(x[0:lim[1]], y[0:lim[1]],
+                return (cfg.throughput(), cfg.bandwidth_offchip(), cfg.performance_density(critical_bw))
+            xput, bw, pd= calculate(n)
+
+            bw_vs_xput.plot(xput[0:lim[1]], bw[0:lim[1]],
                          label="with data reuse", color="#6C8EBF")
-            subplot.legend()
+            bw_vs_xput.legend()
+
+            pd_vs_xput.plot(xput[500:lim[1]], pd[500:lim[1]],
+                         label="with data reuse", color="#6C8EBF")
+            pd_vs_xput.legend()
+
             print(">> with data reuse: <<")
             print_statistics(
-                cfgs[n[np.argwhere(y[0:lim[1]] < critical_bw)[-1]][0]], area_envelope)
+                cfgs[n[np.argwhere(bw[0:lim[1]] < critical_bw)[-1]][0]], area_envelope)
 
         print(f"=== DATA FOR {title.upper()} ===")
         without_reuse()
         with_reuse()
 
-        subplot.set_ylim(ylim)
-        subplot.set_xlim(xlim)
+        bw_vs_xput.set_ylim([0, 4020])
+        bw_vs_xput.set_xlim([0, 6500])
+
+        # pd_vs_xput.set_ylim([0, 10])
+        # pd_vs_xput.set_xlim([0, 6500])
 
         if SAVE_FIGS:
             fig.tight_layout()
-            fig.savefig(f"{ title }-bw.svg")
-            fig.savefig(f"{ title }-bw.png")
+            fig.savefig(f"{ FIGS_PATH }/{ title }-bw.svg")
+            fig.savefig(f"{ FIGS_PATH }/{ title }-bw.png")
 
     efficiency = 0.85  # mario's reference
 
-    plot_for(
-        "hbfp4",
-        reticle_size * efficiency,
-        lambda n: StardustConfigHBFP(
-            clock_frequency=clock_frequency,
-            dim_array=n,
-            dim_block=16,
-            len_exponent=10,
-            len_mantissa=4,
-            floating_point=FloatingPoint.bfloat16))
-
-    plot_for(
-        "hbfp8",
-        reticle_size * efficiency,
-        lambda n: StardustConfigHBFP(
-            clock_frequency=clock_frequency,
-            dim_array=n,
-            dim_block=16,
-            len_exponent=10,
-            len_mantissa=8,
-            floating_point=FloatingPoint.bfloat16))
+    for w in [2, 3, 4, 5, 6, 8, 16, 32]:
+        plot_for(
+            f"hbfp{w}",
+            reticle_size * efficiency,
+            lambda n: StardustConfigHBFP(
+                clock_frequency=clock_frequency,
+                dim_array=n,
+                dim_block=16,
+                len_exponent=10,
+                len_mantissa=w,
+                floating_point=FloatingPoint.bfloat16))
 
     plot_for(
         "bfloat16",
