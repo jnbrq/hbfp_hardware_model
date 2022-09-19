@@ -53,8 +53,8 @@ def addition_only_hardware(
 
 def main():
     traditional_float_hardware(FloatingPoint.bfloat16)
-    traditional_fxpt_hardware(SInt(8), SInt(12))
-    addition_only_hardware(SInt(12))
+    traditional_fxpt_hardware(SInt(8), SInt(20))
+    addition_only_hardware(SInt(20))
 
 if __name__ == "__main__":
     main()
