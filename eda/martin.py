@@ -11,9 +11,7 @@ VERBOSE = True
 
 register_fixed_point_estimators(area)
 
-def traditional_float_hardware(
-    gen_fp: FloatingPoint
-) -> float:
+def traditional_float_hardware(gen_fp: FloatingPoint) -> float:
     area_mul = area(Multiply(gen_fp))
     area_add = area(Add(gen_fp))
     result = area_mul + area_add
@@ -24,10 +22,7 @@ def traditional_float_hardware(
         print(f"    {result=}")
     return result
 
-def traditional_fxpt_hardware(
-    gen_operand: SInt,
-    gen_accumulator: int
-) -> float:
+def traditional_fxpt_hardware(gen_operand: SInt, gen_accumulator: int) -> float:
     area_mul = area(Multiply(gen_operand))
     area_add = area(Add(gen_accumulator))
     result = area_mul + area_add
@@ -38,9 +33,7 @@ def traditional_fxpt_hardware(
         print(f"    {result=}")
     return result
 
-def addition_only_hardware(
-    gen_accumulator: SInt
-) -> float:
+def addition_only_fixed_hardware(gen_accumulator: SInt) -> float:
     area_add = area(Add(gen_accumulator))
     coeff = 2
     result = area_add * coeff
@@ -51,10 +44,22 @@ def addition_only_hardware(
         print(f"    {result=}")
     return result
 
+def addition_only_float_hardware(gen_accumulator: FloatingPoint) -> float:
+    area_add = area(Add(gen_accumulator))
+    area_comp = area(Add(SInt(gen_accumulator.bits()))) * 1.2
+    result = area_add + area_comp
+    if VERBOSE:
+        print(f"addition_only_float_hardware with {gen_accumulator=}")
+        print(f"    {area_add=}")
+        print(f"    {area_comp=}")
+        print(f"    {result=}")
+    return result
+
 def main():
     traditional_float_hardware(FloatingPoint.bfloat16)
     traditional_fxpt_hardware(SInt(8), SInt(20))
-    addition_only_hardware(SInt(20))
+    addition_only_fixed_hardware(SInt(20))
+    addition_only_float_hardware(FloatingPoint.bfloat16)
 
 if __name__ == "__main__":
     main()
