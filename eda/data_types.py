@@ -78,7 +78,7 @@ class FloatingPoint(Data):
         return f"fpe{self.exponent_width}m{self.mantissa_width}"
     
     def bits(self) -> int:
-        return self.exponent_width + self.mantissa_width
+        return self.exponent_width + self.mantissa_width + 1
 
 
 FloatingPoint.ieee_fp16 = FloatingPoint(5, 10)
